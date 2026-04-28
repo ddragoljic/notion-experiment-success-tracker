@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Experiment Success Rate</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Lora:ital,wght@0,400;1,400&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Lora', Georgia, serif; background: transparent; padding: 0.9rem; }
+  .card { background: #fdf8f2; border-radius: 14px; padding: 1rem 1.25rem; position: relative; overflow: hidden; }
+  .watercolor-tl { position: absolute; top: -30px; left: -20px; width: 160px; height: 140px; border-radius: 50%; background: radial-gradient(circle, rgba(168,196,160,0.18), rgba(196,212,160,0.12), transparent 70%); pointer-events: none; }
+  .watercolor-br { position: absolute; bottom: -30px; right: -20px; width: 150px; height: 130px; border-radius: 50%; background: radial-gradient(circle, rgba(152,180,144,0.15), rgba(180,200,160,0.10), transparent 70%); pointer-events: none; }
+  .header { font-family: 'Playfair Display', Georgia, serif; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #7a9a72; margin-bottom: 0.6rem; position: relative; }
+  .border-line { height: 2px; background: linear-gradient(to right, transparent, #a8c4a0 20%, #c4d4a0 50%, #b8c8a0 80%, transparent); border-radius: 999px; margin-bottom: 0.9rem; }
+
+  .donut-row { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 0.9rem; }
+  .donut-wrap { position: relative; flex-shrink: 0; width: 100px; height: 100px; }
+  .donut-wrap svg { transform: rotate(-90deg); }
+  .donut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+  .donut-pct { font-family: 'Playfair Display', Georgia, serif; font-size: 22px; font-weight: 500; color: #3a5a34; line-height: 1; }
+  .donut-sublabel { font-size: 9px; color: #7a9a72; font-style: italic; margin-top: 2px; }
+
+  .stats-col { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .stat-row { display: flex; align-items: center; gap: 8px; }
+  .stat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .stat-info { flex: 1; }
+  .stat-name { font-size: 11px; color: #5c4f3d; font-style: italic; }
+  .stat-count { font-family: 'Playfair Display', Georgia, serif; font-size: 14px; color: #3a5a34; font-weight: 500; }
+
+  .divider-sm { height: 1px; background: linear-gradient(to right, transparent, #c4d4a0, transparent); margin: 0.75rem 0; }
+
+  .status-bar { display: flex; align-items: center; gap: 6px; }
+  .status-dot-sm { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .status-text { font-size: 11px; color: #7a9a72; font-style: italic; }
+
+  .btn-row { display: flex; gap: 8px; margin-top: 0.6rem; }
+  .btn { font-family: 'Lora', Georgia, serif; font-size: 11px; font-style: italic; padding: 4px 12px; cursor: pointer; border: 0.5px solid #a8c4a0; border-radius: 6px; background: rgba(255,255,255,0.7); color: #3a5a34; }
+  .btn:hover { background: #a8c4a0; }
+  .btn-danger { border-color: #d4b0b0; color: #9a5555; }
+  .btn-danger:hover { background: #f5e8e8; }
+  .updated { font-size: 10px; color: #a8b898; font-style: italic; margin-top: 0.3rem; }
+
+  .error-box { background: #f8eded; border-radius: 8px; padding: 0.5rem 0.75rem; font-size: 11px; color: #9a5555; font-style: italic; margin: 0.5rem 0; }
+
+  .setup-title { font-family: 'Playfair Display', Georgia, serif; font-size: 15px; font-weight: 500; color: #3a5a34; margin-bottom: 6px; }
+  .setup-desc { font-size: 12px; color: #7a9a72; margin-bottom: 0.75rem; line-height: 1.6; font-style: italic; }
+  .setup-label { font-size: 11px; color: #5a7a54; font-weight: 500; margin-bottom: 4px; display: block; }
+  .setup-input { width: 100%; padding: 7px 9px; font-size: 12px; border: 0.5px solid #a8c4a0; border-radius: 6px; font-family: monospace; color: #3a5a34; background: rgba(255,255,255,0.8); margin-bottom: 0.6rem; }
+  .setup-input:focus { outline: none; border-color: #88a880; }
+  .btn-primary { background: #7a9a72; color: #fdf8f2; border-color: #7a9a72; font-style: normal; }
+  .btn-primary:hover { background: #6a8a62; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="watercolor-tl"></div>
+  <div class="watercolor-br"></div>
+
+  <div id="setup-view">
+    <div class="setup-title">Connect Notion</div>
+    <div class="setup-desc">Enter your Notion API token to pull live experiment data.</div>
+    <label class="setup-label">Notion API token</label>
+    <input class="setup-input" type="password" id="token-input" placeholder="ntn_..." />
+    <div id="setup-error"></div>
+    <button class="btn btn-primary" onclick="saveToken()">connect</button>
+  </div>
+
+  <div id="stats-view" style="display:none;">
+    <div class="header">Experiment Success Rate</div>
+    <div class="border-line"></div>
+    <div class="donut-row">
+      <div class="donut-wrap">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="38" fill="none" stroke="#e8f0e0" stroke-width="10"/>
+          <circle cx="50" cy="50" r="38" fill="none" stroke="#a8c4a0" stroke-width="10"
+            stroke-dasharray="239" stroke-dashoffset="239"
+            id="donut-success" stroke-linecap="round"/>
+          <circle cx="50" cy="50" r="38" fill="none" stroke="#d4b0b0" stroke-width="10"
+            stroke-dasharray="239" stroke-dashoffset="239"
+            id="donut-failed" stroke-linecap="round"/>
+        </svg>
+        <div class="donut-center">
+          <div class="donut-pct" id="pct-display">—</div>
+          <div class="donut-sublabel">success</div>
+        </div>
+      </div>
+      <div class="stats-col">
+        <div class="stat-row">
+          <div class="stat-dot" style="background:#a8c4a0"></div>
+          <div class="stat-info">
+            <div class="stat-name">complete</div>
+            <div class="stat-count" id="count-complete">—</div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-dot" style="background:#d4b0b0"></div>
+          <div class="stat-info">
+            <div class="stat-name">failed</div>
+            <div class="stat-count" id="count-failed">—</div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-dot" style="background:#c4d4a0"></div>
+          <div class="stat-info">
+            <div class="stat-name">in progress</div>
+            <div class="stat-count" id="count-inprogress">—</div>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-dot" style="background:#e8ddd0"></div>
+          <div class="stat-info">
+            <div class="stat-name">not started</div>
+            <div class="stat-count" id="count-notstarted">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="status-area"></div>
+    <div class="updated" id="updated-text"></div>
+    <div class="btn-row">
+      <button class="btn" onclick="fetchStats()">refresh</button>
+      <button class="btn btn-danger" onclick="resetToken()">reset token</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROXY = "https://notion-phd-proxy.ddragoljic99.workers.dev";
+const DB_EXPERIMENTS = "34f8639df38480f0a97cde2df914a695";
+const CIRCUMFERENCE = 2 * Math.PI * 38;
+
+function getToken() { return localStorage.getItem("notion_phd_token"); }
+
+function saveToken() {
+  const val = document.getElementById("token-input").value.trim();
+  if (!val.startsWith("ntn_") && !val.startsWith("secret_")) {
+    document.getElementById("setup-error").innerHTML = `<div class="error-box">that doesn't look like a valid token</div>`;
+    return;
+  }
+  localStorage.setItem("notion_phd_token", val);
+  showStats();
+}
+
+function resetToken() {
+  localStorage.removeItem("notion_phd_token");
+  document.getElementById("stats-view").style.display = "none";
+  document.getElementById("setup-view").style.display = "block";
+  document.getElementById("token-input").value = "";
+}
+
+function showStats() {
+  document.getElementById("setup-view").style.display = "none";
+  document.getElementById("stats-view").style.display = "block";
+  fetchStats();
+}
+
+async function countAll(filter) {
+  const TOKEN = getToken();
+  let count = 0, cursor = undefined, hasMore = true;
+  while (hasMore) {
+    const body = { page_size: 100, ...(filter ? { filter } : {}), ...(cursor ? { start_cursor: cursor } : {}) };
+    const res = await fetch(`${PROXY}/proxy/v1/databases/${DB_EXPERIMENTS}/query`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${TOKEN}`, "Notion-Version": "2022-06-28", "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.object === "error") throw new Error(data.message);
+    count += data.results.length;
+    hasMore = data.has_more;
+    cursor = data.next_cursor;
+  }
+  return count;
+}
+
+function setStatus(msg, isError) {
+  document.getElementById("status-area").innerHTML = isError
+    ? `<div class="error-box">${msg}</div>`
+    : `<div class="status-bar"><div class="status-dot-sm" style="background:#a8c4a0"></div><span class="status-text">${msg}</span></div>`;
+}
+
+function updateDonut(complete, failed) {
+  const total = complete + failed;
+  const pct = total === 0 ? 0 : Math.round((complete / total) * 100);
+  document.getElementById("pct-display").textContent = total === 0 ? "—" : pct + "%";
+
+  const successOffset = total === 0 ? CIRCUMFERENCE : CIRCUMFERENCE - (complete / total) * CIRCUMFERENCE;
+  const failedOffset = total === 0 ? CIRCUMFERENCE : CIRCUMFERENCE - (failed / total) * CIRCUMFERENCE;
+  const failedRotation = total === 0 ? 0 : (complete / total) * 360;
+
+  const successEl = document.getElementById("donut-success");
+  const failedEl = document.getElementById("donut-failed");
+
+  successEl.style.strokeDashoffset = successOffset;
+  successEl.style.transition = "stroke-dashoffset 0.8s ease";
+
+  failedEl.style.strokeDashoffset = failedOffset;
+  failedEl.style.transform = `rotate(${failedRotation}deg)`;
+  failedEl.style.transformOrigin = "50px 50px";
+  failedEl.style.transition = "stroke-dashoffset 0.8s ease, transform 0.8s ease";
+}
+
+async function fetchStats() {
+  setStatus("fetching from Notion...");
+  ["count-complete","count-failed","count-inprogress","count-notstarted"].forEach(id => document.getElementById(id).textContent = "…");
+  document.getElementById("pct-display").textContent = "…";
+
+  try {
+    const [complete, failed, inProgress, notStarted] = await Promise.all([
+      countAll({ property: "status", status: { equals: "complete" } }),
+      countAll({ property: "status", status: { equals: "failed" } }),
+      countAll({ property: "status", status: { equals: "in progress" } }),
+      countAll({ property: "status", status: { equals: "not started" } })
+    ]);
+
+    document.getElementById("count-complete").textContent = complete;
+    document.getElementById("count-failed").textContent = failed;
+    document.getElementById("count-inprogress").textContent = inProgress;
+    document.getElementById("count-notstarted").textContent = notStarted;
+
+    updateDonut(complete, failed);
+    setStatus("live from your Notion databases");
+    document.getElementById("updated-text").textContent = `last updated: ${new Date().toLocaleTimeString()}`;
+  } catch (err) {
+    setStatus(`could not connect to Notion — ${err.message}`, true);
+  }
+}
+
+document.getElementById("donut-success").style.strokeDasharray = CIRCUMFERENCE;
+document.getElementById("donut-failed").style.strokeDasharray = CIRCUMFERENCE;
+
+if (getToken()) { showStats(); }
+</script>
+</body>
+</html>
