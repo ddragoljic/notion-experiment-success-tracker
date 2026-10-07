@@ -215,7 +215,7 @@ async function fetchStats() {
       countAll({ property: "status", status: { equals: "not started" } })
     ]);
 
-    document.getElementById("count-complete").textContent = complete;
+    document.getElementById("count-complete").textContent = complete + failed;
     document.getElementById("count-failed").textContent = failed;
     document.getElementById("count-inprogress").textContent = inProgress + analyzing;
     document.getElementById("count-notstarted").textContent = notStarted;
